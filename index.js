@@ -2,103 +2,92 @@ const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, StringSelectM
 const fs = require('fs');
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent, 
-        GatewayIntentBits.GuildMembers
-    ]
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers]
 });
 
 const prefix = "!";
 const devSignature = "Developed by Wilked (Rain Town) 🌧️";
 
+// تحميل قاعدة البيانات (تخزين الأوامر المعدلة والجديدة)
+let db = { users: {}, perms: {}, customCommands: {}, cmdAliases: {} };
+if (fs.existsSync('./database.json')) {
+    db = JSON.parse(fs.readFileSync('./database.json', 'utf8'));
+}
+function saveDB() { fs.writeFileSync('./database.json', JSON.stringify(db, null, 4)); }
+
 client.on('ready', () => {
-    console.log(`Rain Town Help System | ${devSignature}`);
-    client.user.setActivity(`Rain Town RP | !help`, { type: ActivityType.Watching });
+    console.log(`Rain Town Command Manager | ${devSignature}`);
 });
 
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.content.startsWith(prefix)) return;
 
     const args = message.content.slice(prefix.length).trim().split(/ +/);
-    const command = args.shift().toLowerCase();
+    const rawCommand = args.shift().toLowerCase();
 
+    // فحص إذا كان الأمر له "اسم مستعار" (Alias) تم تعديله من الديسكورد
+    const command = db.cmdAliases[rawCommand] || rawCommand;
+
+    // --- [ نظام تعديل الأوامر من الديسكورد - للأدمن فقط ] ---
+    if (command === 'تعديل_امر') {
+        if (!message.member.permissions.has('Administrator')) return;
+        
+        const type = args[0]; // (alias أو add)
+        if (type === 'اسم') {
+            // مثال: !تعديل_امر اسم [الاسم_القديم] [الاسم_الجديد]
+            const oldName = args[1];
+            const newName = args[2];
+            if (!oldName || !newName) return message.reply("⚠️ الاستخدام: `!تعديل_امر اسم [القديم] [الجديد]`");
+            
+            db.cmdAliases[newName] = oldName;
+            saveDB();
+            message.reply(`✅ تم تغيير اسم الأمر من **${oldName}** إلى **${newName}** بنجاح!`);
+        } 
+        else if (type === 'اضافة') {
+            // مثال: !تعديل_امر اضافة [الامر] [الرد]
+            const cmdName = args[1];
+            const response = args.slice(2).join(" ");
+            if (!cmdName || !response) return message.reply("⚠️ الاستخدام: `!تعديل_امر اضافة [الامر] [الرد]`");
+            
+            db.customCommands[cmdName] = response;
+            saveDB();
+            message.reply(`✅ تم إضافة أمر جديد باسم **${cmdName}** بنجاح!`);
+        }
+    }
+
+    // --- [ تشغيل الأوامر المضافة (Custom Commands) ] ---
+    if (db.customCommands[command]) {
+        return message.reply(db.customCommands[command]);
+    }
+
+    // --- [ الأوامر الأساسية (بعد فحص الاسم المستعار) ] ---
     if (command === 'help' || command === 'اوامر') {
-        const mainEmbed = new EmbedBuilder()
-            .setTitle("🌧️ مركز مساعدة مديـنة Rain Town")
-            .setDescription("مرحباً بك يا مواطن، يرجى اختيار القسم من القائمة بالأسفل لعرض الأوامر الخاصة به.")
+        const helpEmbed = new EmbedBuilder()
+            .setTitle(`🏙️ لوحة تحكم أوامر ${devSignature}`)
+            .setDescription("اختر القسم لعرض الأوامر، أو استخدم `!تعديل_امر` لتغيير المسميات.")
             .setColor("#000000")
             .setFooter({ text: devSignature });
 
-        const menu = new ActionRowBuilder()
-            .addComponents(
-                new StringSelectMenuBuilder()
-                    .setCustomId('help_menu')
-                    .setPlaceholder('اختر القسم المطلوب...')
-                    .addOptions([
-                        {
-                            label: '🛒 أوامر المتجر والتصنيع',
-                            description: 'عرض أوامر البيع والشراء والطبخ',
-                            value: 'shop_cmds',
-                            emoji: '💰'
-                        },
-                        {
-                            label: '📝 أوامر التفعيل والمواطنة',
-                            description: 'عرض أوامر الهوية والتفعيل ومنصة X',
-                            value: 'verify_cmds',
-                            emoji: '🪪'
-                        },
-                        {
-                            label: '⚙️ أوامر السيرفر العامة',
-                            description: 'عرض أوامر البنك والمساعدة والخاصيات',
-                            value: 'server_cmds',
-                            emoji: '🏙️'
-                        }
-                    ]),
-            );
-
-        await message.reply({ embeds: [mainEmbed], components: [menu] });
+        const menu = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId('help_menu')
+                .setPlaceholder('اختر القسم...')
+                .addOptions([
+                    { label: '🛒 المتجر', value: 'shop', emoji: '💰' },
+                    { label: '📝 المواطنة', value: 'verify', emoji: '🪪' },
+                    { label: '⚙️ الإعدادات', value: 'settings', emoji: '🛠️' }
+                ])
+        );
+        message.reply({ embeds: [helpEmbed], components: [menu] });
     }
-});
 
-// --- [ معالجة اختيار القائمة ] ---
-client.on('interactionCreate', async interaction => {
-    if (!interaction.isStringSelectMenu()) return;
-
-    if (interaction.customId === 'help_menu') {
-        let embed = new EmbedBuilder().setColor("#000000").setFooter({ text: devSignature });
-
-        if (interaction.values[0] === 'shop_cmds') {
-            embed.setTitle("💰 قائمة أوامر المتجر والتصنيع")
-                .addFields(
-                    { name: '🛒 التجارة:', value: '`!متجر_اسلحة` | `!معرض_سيارات` | `!شراء [اسم]`', inline: false },
-                    { name: '🛠️ التصنيع:', value: '`!تجميع` | `!تصنع_سلاح` | `!طبخ_ممنوعات`', inline: false }
-                )
-                .setImage("https://i.ibb.co/pLgR9Dq/weapons-shop.jpg");
-        } 
-        
-        else if (interaction.values[0] === 'verify_cmds') {
-            embed.setTitle("🪪 قائمة أوامر التفعيل والمواطنة")
-                .addFields(
-                    { name: '📝 التفعيل:', value: '`!تفعيل @الشخص الاسم` (للإدارة)', inline: false },
-                    { name: '👤 الشخصية:', value: '`!هوية` | `!حقيبتي` | `!لفلي`', inline: false },
-                    { name: '📱 الجوال:', value: '`!تغريدة [نص]` | `!x [نص]`', inline: false }
-                )
-                .setImage("https://i.ibb.co/KjqY0wN/id-card.png");
-        }
-
-        else if (interaction.values[0] === 'server_cmds') {
-            embed.setTitle("🏙️ أوامر السيرفر العامة")
-                .addFields(
-                    { name: '🏦 المالية:', value: '`!فلوسي` | `!تحويل @الشخص [المبلغ]` | `!تزويد`', inline: false },
-                    { name: '⚖️ الإدارة:', value: '`!خاصيات @رتبة allow/deny` | `!رسبكت @الشخص [+/-]`', inline: false },
-                    { name: '🚨 الطوارئ:', value: '`!بلاغ [نص]` | `!اسعاف` | `!موقع`', inline: false }
-                )
-                .setImage("https://i.ibb.co/L5hY5Mh/car-dealer.jpg");
-        }
-
-        await interaction.update({ embeds: [embed] });
+    // مثال لأمر التفعيل (بيشتغل بالاسم القديم أو الجديد اللي اخترته)
+    if (command === 'تفعيل') {
+        const target = message.mentions.members.first();
+        const nick = args.slice(1).join(" ");
+        if (!target || !nick) return message.reply("⚠️ !تفعيل @الشخص الاسم");
+        await target.setNickname(`[RT] ${nick}`).catch(() => {});
+        message.reply(`✅ تم تفعيل المواطن بنجاح.`);
     }
 });
 
