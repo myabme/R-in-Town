@@ -1,124 +1,138 @@
-import discord
-from discord.ext import commands
-from discord.ui import Select, View, Button
+const { Client, GatewayIntentBits, ActivityType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
 
-# --- الإعدادات الأساسية ---
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
+const bot = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent, 
+        GatewayIntentBits.GuildMembers
+    ] 
+});
 
-# --- قاعدة البيانات والفلترة ---
-players = {} 
-BANNED_LEGENDS = ["ماثيو", "كافح", "المكافح", "راكان", "جسار", "عقاب", "صخر", "شيبان", "هتلر", "ديربي", "عقيل", "جبر"]
-BLACK_COLOR = 0x000000 # اللون الأسود الملكي
+// --- قاعدة البيانات المؤقتة وفلاتر الحماية ---
+let players = {}; 
+const craftingCooldowns = new Set();
+const BANNED_WORDS = ["سب", "عنصرية", "دين"]; 
+const BANNED_LEGENDS = ["ماثيو", "كافح", "المكافح", "راكان", "جسار", "عقاب", "صخر", "شيبان", "هتلر", "ديربي", "عقيل", "جبر"];
+const BLACK_COLOR = 0x000000;
+const PREFIX = '!';
 
-# --- حالة البث (Streaming) ---
-@bot.event
-async def on_ready():
-    activity = discord.Streaming(
-        name="Rain Town RP | Dev By Wilked", 
-        url="https://www.twitch.tv/wilked"
-    )
-    await bot.change_presence(activity=activity)
-    print(f"**__[تم تشغيل نظام رين تاون الأسود بنجاح]__**")
+// --- قائمة المسدسات المتاحة للتصنيع (قراند سوني) ---
+const pistols = [
+    { name: "Pistol (العادي)", material: "15 حديد", ms: 30000 },
+    { name: "Combat Pistol (القتالي)", material: "25 حديد", ms: 60000 },
+    { name: "Heavy Pistol (الثقيل)", material: "40 حديد", ms: 120000 },
+    { name: "Vintage Pistol (الكلاسيكي)", material: "20 حديد", ms: 45000 }
+];
 
-# --- 1. نظام البنك (إيمبد أسود + قائمة منسدلة) ---
-class BankOptions(Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="فـلـوسـي | My Balance", emoji="💰"),
-            discord.SelectOption(label="تـحـويـل | Transfer", emoji="💸"),
-            discord.SelectOption(label="إيـداع | Deposit", emoji="🏦"),
-        ]
-        super().__init__(placeholder="اختر العملية البنكية المطلوبة...", options=options)
+bot.once('ready', () => {
+    bot.user.setPresence({
+        activities: [{ name: 'Rain Town RP | Dev By Wilked', type: ActivityType.Streaming, url: 'https://www.twitch.tv/wilked' }],
+        status: 'online',
+    });
+    console.log("**__[نظام رين تاون الشامل والآمن جاهز للعمل]__**");
+});
 
-    async def callback(self, interaction: discord.Interaction):
-        # الردود تظهر فقط للمستخدم (Ephemeral) لتجنب تخريب الروم
-        if "فـلـوسـي" in self.values[0]:
-            await interaction.response.send_message("**__رصـيـدك الـحـالـي هـو: 5000$ | Your Balance is: 5000$__**", ephemeral=True)
-        elif "تـحـويـل" in self.values[0]:
-            await interaction.response.send_message("**__لإتـمام عـمـلـيـة الـتـحـويـل، يـرجـى اسـتـخدام الأمـر: `!حوالة [الشخص] [المبلغ]`__**", ephemeral=True)
-        elif "إيـداع" in self.values[0]:
-            await interaction.response.send_message("**__نـظـام الإيـداع الـتـلـقـائـي يـعـمل حـالـياً عـبـر الـصـرافات الـمـنـتـشرة__**", ephemeral=True)
+bot.on('messageCreate', async message => {
+    if (message.author.bot) return;
 
-class BankView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(BankOptions())
+    // --- 1. نظام الحماية التلقائي من السب ---
+    if (BANNED_WORDS.some(word => message.content.includes(word))) {
+        await message.delete().catch(() => {});
+        return message.channel.send(`**__عـذراً {${message.author.username}}، يـمـنـع الـتـجـاوز فـي مـديـنـتـنـا__**`).then(m => setTimeout(() => m.delete(), 3000));
+    }
 
-# --- 2. نظام إنشاء الشخصية (فلترة + أسود) ---
-@bot.command(name="انشاء_شخصية")
-async def create_id(ctx, name: str, age: int):
-    user_name = name.strip()
-    if any(legend in user_name for legend in BANNED_LEGENDS):
-        embed = discord.Embed(title="❌ رَفـض الـتـسـجـيـل", description="**__عـذراً، هـذا الاسـم مـمـنـوع لـديـنـا__**", color=BLACK_COLOR)
-        return await ctx.send(embed=embed)
+    if (!message.content.startsWith(PREFIX)) return;
+    const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+    const command = args.shift().toLowerCase();
 
-    for p_id in players:
-        if players[p_id].get('identity') and players[p_id]['identity']['name'] == user_name:
-            embed = discord.Embed(title="❌ رَفـض الـتـسـجـيـل", description="**__عـذراً، هـذا الاسـم مـتـكـرر ولا يـمـكـن مـنـحه لـك__**", color=BLACK_COLOR)
-            return await ctx.send(embed=embed)
+    // --- 2. نظام إنشاء الهوية (مع منع التكرار والأساطير) ---
+    if (command === 'انشاء_هوية') {
+        const name = args[0];
+        const age = parseInt(args[1]);
+        if (!name || isNaN(age)) return message.reply("**__يـرجى كـتـابة: `!انشاء_هوية [الاسم] [العمر]`__**");
+        
+        if (BANNED_LEGENDS.some(legend => name.includes(legend))) return message.reply("**__الاسـم مـمـنـوع (مـن أسـاطـيـر الـ RP)__**");
+        if (age < 20 || age > 45) return message.reply("**__يـجـب أن يـكـون الـعـمر مـا بـين 20 و 45 عـامـاً__**");
 
-    if not (20 <= age <= 45):
-        return await ctx.send("**__يـجـب أن يـكـون الـعـمر مـا بـين 20 و 45 عـامـاً__**")
+        players[message.author.id] = { name, age, money: 5000, bank: 10000, inventory: ["جوال", "رخصة"] };
+        const embed = new EmbedBuilder().setTitle("🆔 هـويـة ريـن تـاون").setDescription(`**__تـم إصـدار هـويـتـك الـرسمية بـنـجـاح__**\n\n**__الاسـم: ${name}__**\n**__الـعـمـر: ${age}__**\n**__الـرصـيد: 5000$__**`).setColor(BLACK_COLOR).setFooter({ text: 'developed by wilked' });
+        message.channel.send({ embeds: [embed] });
+    }
 
-    players[ctx.author.id] = {"money": 5000, "identity": {"name": user_name, "age": age}}
-    embed = discord.Embed(title="🆔 هـويـة Rain Town", description=f"**__تـم تـسـجـيـل بـيـانـاتـك الـرسـمـيـة بـنـجـاح__**\n\n**__الاسـم: {user_name}__**\n**__الـعـمر: {age}__**\n**__الـرصـيد: 5000$__**", color=BLACK_COLOR)
-    embed.set_footer(text="developed by wilked")
-    await ctx.send(embed=embed)
+    // --- 3. نظام الحقيبة ---
+    if (command === 'حقيبة') {
+        const p = players[message.author.id];
+        if (!p) return message.reply("**__لـيـس لـديـك هـويـة بـعـد__**");
+        const embed = new EmbedBuilder().setTitle("🎒 حـقـيـبـة الـمـواطـن").setDescription(`**__مـحـتـويـاتـك:__**\n**__${p.inventory.join(" - ")}__**`).setColor(BLACK_COLOR);
+        message.channel.send({ embeds: [embed] });
+    }
 
-# --- 3. نظام التحدث (!say) بـ أزرار ---
-class SayView(View):
-    def __init__(self, content):
-        super().__init__(timeout=30)
-        self.content = content
+    // --- 4. نظام البنك والمحفظة ---
+    if (command === 'بنك') {
+        const p = players[message.author.id] || { money: 0, bank: 0 };
+        const embed = new EmbedBuilder().setTitle("🏦 ريـن بـانـك | Rain Bank").addFields({ name: "💰 الـمحفظة", value: `**__${p.money}$__**`, inline: true }, { name: "💳 الـحـساب", value: `**__${p.bank}$__**`, inline: true }).setColor(BLACK_COLOR).setFooter({ text: 'developed by wilked' });
+        message.channel.send({ embeds: [embed] });
+    }
 
-    @discord.ui.button(label="إرسال رسالة عادية", style=discord.ButtonStyle.secondary, emoji="💬")
-    async def send_normal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.channel.send(self.content)
-        await interaction.response.edit_message(content="**__تم الإرسال بنجاح__**", view=None)
+    // --- 5. نظام التصنيع (المسدسات فقط بالوقت) ---
+    if (command === 'تصنيع') {
+        const embed = new EmbedBuilder().setTitle("🛠️ ورشـة الـتـصـنـيـع الـحـربي").setDescription("**__الأسـلـحـة الـمـتـاحـة لـلـتـصـنـيـع الآن (المسدسات):__**").setColor(BLACK_COLOR);
+        pistols.forEach(p => embed.addFields({ name: `🔫 ${p.name}`, value: `**__المتطلبات: ${p.material} | الوقت: ${p.ms/1000} ثانية__**` }));
+        embed.setFooter({ text: 'للبدء اكتب: !اصنع [اسم المسدس]' });
+        message.channel.send({ embeds: [embed] });
+    }
 
-    @discord.ui.button(label="إرسال إيمبد أسود", style=discord.ButtonStyle.primary, emoji="🖼️")
-    async def send_embed(self, interaction: discord.Interaction, button: discord.ui.Button):
-        embed = discord.Embed(description=f"**__{self.content}__**", color=BLACK_COLOR)
-        embed.set_footer(text="developed by wilked")
-        await interaction.channel.send(embed=embed)
-        await interaction.response.edit_message(content="**__تم إرسال الإيمبد بنجاح__**", view=None)
+    if (command === 'اصنع') {
+        if (craftingCooldowns.has(message.author.id)) return message.reply("**__عـذراً، عـمـلـيـة تـصـنـيـع أخـرى قـيـد الـتـنـفـيـذ__**");
+        const weaponName = args.join(" ");
+        const weapon = pistols.find(p => weaponName && p.name.toLowerCase().includes(weaponName.toLowerCase()));
+        if (!weapon) return message.reply("**__هـذا الـسـلاح غـيـر مـتـوفـر__**");
 
-@bot.command(name="say")
-@commands.has_permissions(administrator=True)
-async def say(ctx, *, message: str):
-    view = SayView(message)
-    await ctx.send("**__اختر طريقة الإرسال المناسبة:__**", view=view, ephemeral=True)
-    await ctx.message.delete()
+        craftingCooldowns.add(message.author.id);
+        message.channel.send(`**__🛠️ جـارٍ تـصـنـيـع {${weapon.name}}.. يـرجـى الانـتـظـار..__**`);
 
-# --- 4. نظام الرسائل الخاصة (!dm) إيمبد أسود ---
-@bot.command(name="dm")
-@commands.has_permissions(administrator=True)
-async def dm(ctx, target: discord.abc.SnowflakeEntity, *, message: str):
-    embed = discord.Embed(title="📩 رسالة رسمية من إدارة Rain Town", description=f"**__{message}__**", color=BLACK_COLOR)
-    embed.set_footer(text="developed by wilked")
+        setTimeout(() => {
+            craftingCooldowns.delete(message.author.id);
+            if (players[message.author.id]) players[message.author.id].inventory.push(weapon.name);
+            const success = new EmbedBuilder().setTitle("✅ تـم الـتـصـنـيـع").setDescription(`**__أُضـيـف {${weapon.name}} إلـى حـقـيـبـتـك__**`).setColor(BLACK_COLOR).setFooter({ text: 'developed by wilked' });
+            message.channel.send({ content: `${message.author}`, embeds: [success] });
+        }, weapon.ms);
+    }
 
-    if isinstance(target, discord.Role):
-        for member in target.members:
-            try: await member.send(embed=embed)
-            except: continue
-        await ctx.send(f"**__تم الإرسال لجميع أعضاء رتبة {target.name}__**")
-    elif isinstance(target, discord.Member):
-        try:
-            await target.send(embed=embed)
-            await ctx.send(f"**__تم الإرسال إلى {target.mention} بنجاح__**")
-        except:
-            await ctx.send("**__العضو مغلق الخاص__**")
+    // --- 6. نظام منصة X (الجوال) ---
+    if (command === 'اكس') {
+        const tweet = args.join(" ");
+        if (!tweet) return;
+        const embed = new EmbedBuilder().setTitle("🐦 مـنـصـة X | Rain Town").setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() }).setDescription(`**__${tweet}__**`).setColor(BLACK_COLOR).setFooter({ text: 'تـم الإرسـال عـبـر الـجـوال' });
+        message.channel.send({ embeds: [embed] });
+        message.delete();
+    }
 
-# --- 5. دليل المساعدة الشامل (!help) إيمبد أسود ---
-@bot.command(name="help")
-async def help_cmd(ctx):
-    embed = discord.Embed(title="📜 دليـل أوامر مـديـنة Rain Town", description="**__نظام الإدارة واللعب الواقعي - برمجة Wilked__**", color=BLACK_COLOR)
-    embed.add_field(name="🏢 الإدارة العليا", value="`!say` , `!dm` , `!ايمبد` , `!مسح`", inline=False)
-    embed.add_field(name="🏦 الأنظمة العامة", value="`!بنك` , `!انشاء_شخصية` , `!تكت` , `!اكس`", inline=False)
-    embed.set_footer(text="developed by wilked")
-    await ctx.send(embed=embed)
+    // --- 7. أمر المساعدة (Help) ---
+    if (command === 'help') {
+        const embed = new EmbedBuilder().setTitle("📜 دليـل نـظـام Rain Town").setColor(BLACK_COLOR)
+            .addFields(
+                { name: "🆔 الـهوية", value: "`!انشاء_هوية` , `!حقيبة`" },
+                { name: "🏦 الـمـال", value: "`!بنك` , `!متجر`" },
+                { name: "🛠️ الـتـقـني", value: "`!تصنيع` , `!اصنع` , `!اكس`" },
+                { name: "🛡️ الإدارة", value: "`!say` , `!طرد` , `!رتبة`" }
+            ).setFooter({ text: 'developed by wilked' });
+        message.channel.send({ embeds: [embed] });
+    }
 
-# --- التوكن في الأسفل ---
-DISCORD_TOKEN = "ضع_التوكن_هنا"
-bot.run(DISCORD_TOKEN)
+    // --- 8. أوامر الإدارة (!say) ---
+    if (command === 'say') {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
+        const msg = args.join(" ");
+        if (!msg) return;
+        const embed = new EmbedBuilder().setDescription(`**__{${msg}}__**`).setColor(BLACK_COLOR).setFooter({ text: 'developed by wilked' });
+        message.channel.send({ embeds: [embed] });
+        message.delete();
+    }
+});
+
+// --- التوكن الآمن ---
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+if (DISCORD_TOKEN) { bot.login(DISCORD_TOKEN); } 
+else { console.log("❌ التوكن غير موجود في Secrets!"); }
