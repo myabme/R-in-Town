@@ -1,87 +1,122 @@
-const { Client, GatewayIntentBits, ActivityType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, ActivityType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, PermissionsBitField, ChannelType } = require('discord.js');
 
 const bot = new Client({ 
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent, 
+        GatewayIntentBits.GuildMembers
+    ] 
 });
 
-// --- قاعدة البيانات العملاقة (RAM) ---
+// --- إعدادات النظام وقاعدة البيانات المؤقتة ---
+const BLACK = 0x000000;
+const FOOTER = "developed by wilked";
+const PREFIX = "!";
+
+let botPermissions = {
+    police: "شرطة",   // الرتبة الافتراضية للشرطة
+    admin: "إدارة",    // الرتبة الافتراضية للإدارة
+    gang: "عصابة"      // الرتبة الافتراضية للعصابات
+};
+
 let players = {}; 
-let adminData = { points: {}, logs: {}, reports: {} };
-let serverStats = { crimes: 0, economy: 10000000, active_cases: 0 };
-const BLACK_COLOR = 0x000000;
-const PREFIX = '!';
 
 bot.once('ready', () => {
     bot.user.setPresence({
-        activities: [{ name: 'Rain Town Global | 1000+ Commands', type: ActivityType.Streaming, url: 'https://www.twitch.tv/wilked' }],
+        activities: [{ name: 'Rain Town V5 | Developed By Wilked', type: ActivityType.Streaming, url: 'https://twitch.tv/wilked' }],
         status: 'online',
     });
-    console.log("**__[إمبراطورية رين تاون تعمل الآن بنجاح]__**");
+    console.log("**__[نظام رين تاون الإمبراطوري جاهز للعمل]__**");
 });
 
 bot.on('messageCreate', async message => {
     if (message.author.bot || !message.content.startsWith(PREFIX)) return;
-
     const args = message.content.slice(PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // --- [1] نظام المخابرات والقضايا (Intelligence System) ---
-    if (command === 'ملف_جنائي') {
-        const target = message.mentions.users.first();
-        if (!target) return message.reply("**__حـدد الـمـواطـن لـفـتـح مـلـفـه الـسـري__**");
-        const embed = new EmbedBuilder().setTitle(`📁 الـسـجل الـجـنائي: ${target.username}`).setDescription("**__الـسوابـق: سـطـو مـسـلـح (3) | تـهـريـب (1) | قـتـل عـمـد (0)__**").setColor(BLACK_COLOR);
-        message.channel.send({ embeds: [embed] });
+    // --- 1. [نظام تعديل الصلاحيات الذكي] ---
+    if (command === 'رتب') {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
+        const type = args[0]; // (شرطة / إدارة / عصابة)
+        const newRole = args.slice(1).join(" ");
+        if (!type || !newRole) return message.reply("**__اسـتـخـدم: `!رتب [النوع] [الاسم]` (مـثلاً: !رتب شرطة عسكر)__**");
+        
+        if (botPermissions[type] !== undefined) {
+            botPermissions[type] = newRole;
+            message.reply(`**__[✅] تـم تـحـديـث رتـبـة {${type}} إلـى {${newRole}} بـنـجـاح__**`);
+        }
     }
 
-    // --- [2] نظام سوق السوداء (Black Market) ---
-    if (command === 'سوق_السوداء') {
-        const embed = new EmbedBuilder().setTitle("💀 سـوق الـسـوداء | الـدخـول مـسـؤولـيـتـك")
-            .addFields(
-                { name: "💊 مـواد مـحـظـورة", value: "`!شراء_كوك` `!شراء_حبوب` `!بيع_اعضاء`" },
-                { name: "🔫 أسـلـحـة غـيـر مـرخـصـة", value: "`!مسدس_ممسوح` `!قنبلة_دخان` `!درع_ثقيل`" }
-            ).setColor(BLACK_COLOR);
-        message.channel.send({ embeds: [embed] });
+    // --- 2. [نظام Say الاحترافي] ---
+    if (command === 'say') {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) return;
+        const mode = args[0]; // (ايمبد / عادي)
+        const text = args.slice(1).join(" ");
+        if (!mode || !text) return message.reply("**__اسـتـخـدم: `!say [ايمبد/عادي] [النص]`__**");
+
+        if (mode === 'ايمبد') {
+            const embed = new EmbedBuilder().setDescription(`**__${text}__**`).setColor(BLACK).setFooter({ text: FOOTER });
+            message.channel.send({ embeds: [embed] });
+        } else {
+            message.channel.send(text);
+        }
+        message.delete().catch(() => {});
     }
 
-    // --- [3] نظام المستشفى والإصابات (EMS System) ---
-    if (command === 'علاج') {
-        const member = message.mentions.members.first();
-        if (!member) return message.reply("**__حـدد الـمـصاب لـإعـطائـه الإسـعـافات__**");
-        message.reply(`**__💉 تـم عـلاج {${member.user.username}} وتـثـبـيـت حـالـتـه الـصـحـيـة__**`);
+    // --- 3. [نظام DM للشخص أو الرتبة] ---
+    if (command === 'dm') {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
+        const target = message.mentions.members.first() || message.mentions.roles.first();
+        const msg = args.slice(1).join(" ");
+        if (!target || !msg) return message.reply("**__اسـتـخـدم: `!dm [@user/@role] [النص]`__**");
+
+        if (target.user) { // إرسال لشخص
+            target.send(`**__[✉️] رسـالـة إداريـة خـاصـة:\n\n${msg}__**`).catch(() => message.reply("❌ خـاص الـعـضـو مـغـلـق"));
+            message.reply(`**__[✅] تـم الإرسـال لـ {${target.user.username}}__**`);
+        } else { // إرسال لرتبة كاملة
+            target.members.forEach(m => m.send(`**__[📢] تـنـبـيـه لـرتـبـة {${target.name}}:\n\n${msg}__**`).catch(() => {}));
+            message.reply(`**__[✅] جـارٍ الإرسـال لـكـافـة أعـضـاء رتـبـة {${target.name}}__**`);
+        }
     }
 
-    // --- [4] نظام المحكمة (Court System) ---
-    if (command === 'رفع_قضية') {
-        serverStats.active_cases++;
-        message.reply(`**__⚖️ تـم تـسـجـيـل قـضـيـة جـديـدة بـرقـم {${serverStats.active_cases}}.. انـتـظـر الـقـاضي__**`);
-    }
-
-    // --- [5] الدليل الإمبراطوري (The Grand Menu - 1000+ Commands) ---
+    // --- 4. [نظام المساعدة المبوب (Buttons Help)] ---
     if (command === 'help' || command === 'اوامر') {
-        const pages = [
-            { name: "🛡️ الـقيادة (200+)", value: "`!نقطة` `!سجل_اداري` `!ترقية` `!تنزيل` `!سجن_مؤبد` `!حظر_نهائي` `!ايمبد_رسمي` `!توب_نقاط` `!فتح_تكت` `!اغلاق_نهائي` `!اعلان_اداري` `!برودكاست_عام` `!تصفير_بيانات`" },
-            { name: "🚓 الـقانون والـشرطة (200+)", value: "`!كلبش` `!فك_كلبش` `!تفتيش_دقيق` `!سحب_رخص` `!بصمة_جنائية` `!مطاردة` `!حجز_مركبة` `!مخالفة` `!تحقيق` `!اعتراف` `!سجن_عسكري` `!مخابرات`" },
-            { name: "💰 الاقـتصاد والـتجارة (200+)", value: "`!بنك` `!تحويل_سريع` `!ايداع` `!سحب` `!بورصة` `!تجارة_ذهب` `!مزاد_سيارات` `!راتب_عصابة` `!غسيل_اموال` `!استثمار` `!قرض_بنكي` `!شيك`" },
-            { name: "⛓️ الـعصابات والـسوق الـسوداء (200+)", value: "`!سطو` `!تهريب` `!مخدرات` `!بيع_اعضاء` `!قنبلة` `!اختطاف` `!فدية` `!تصفية` `!غدر` `!اجتماع_سري` `!تحالف` `!حرب_شوارع`" },
-            { name: "🏠 الـحياة والـعقارات (200+)", value: "`!هوية` `!حقيبة` `!شراء_قصر` `!بيع_بيت` `!فندق` `!استئجار` `!جواز` `!مطار` `!تذكرة_سفر` `!سيارة_فخمة` `!كراج` `!صيانة` `!وقود`" }
-        ];
-
         const embed = new EmbedBuilder()
-            .setTitle("👑 الـدليـل الإمـبـراطور لـمـديـنـة Rain Town")
-            .setDescription("**__أضـخم سـيسـتم فـي الـشرق الأوسـط - 1000+ أمـر - بـرمـجـة Wilked__**")
-            .setColor(BLACK_COLOR)
-            .setFooter({ text: 'developed by wilked | Rain Town Global Edition' });
+            .setTitle("👑 لوحة تحكم Rain Town | Wilked System")
+            .setDescription("**__مـرحـبـاً بـك يـا لـورد.. اضـغـط عـلى الـفـئـة لـرؤيـة الأوامـر الـمخـتـصـرة:__**")
+            .setColor(BLACK).setFooter({ text: FOOTER });
 
-        pages.forEach(p => embed.addFields({ name: p.name, value: p.value }));
-        message.channel.send({ embeds: [embed] });
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('h_admin').setLabel('🛡️ الإدارة').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('h_police').setLabel('👮 الشرطة').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('h_gang').setLabel('🔥 العصابات').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('h_bank').setLabel('💰 البنك').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('h_life').setLabel('👥 الحياة').setStyle(ButtonStyle.Secondary)
+        );
+        message.channel.send({ embeds: [embed], components: [row] });
+    }
+
+    // --- أمثلة لأوامر الرتب (شرطة) ---
+    if (command === 'تفتيش') {
+        if (!message.member.roles.cache.some(r => r.name === botPermissions.police)) return message.reply("**__عـذراً، هـذا الأمـر مـخصص لـرتـبـة الـشـرطـة فـقـط!__**");
+        const user = message.mentions.users.first();
+        if (!user) return message.reply("**__يـرجى مـنـشـنة الـشخص لـتـفـتـيـشـه__**");
+        message.reply(`**__[🔎] تـم تـفـتـيـش {${user.username}}.. والـوضـع سـلـيـم__**`);
     }
 });
 
-// --- نظام التكتات والذكاء الاصطناعي البسيط ---
+// --- معالجة أزرار الهيلب والقوائم ---
 bot.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
-    // (هنا تكتمل برمجة التكتات كما في السكربت السابق)
+    let list = "";
+    if (interaction.customId === 'h_admin') list = "**`!رتب` `!نقطة` `!سجن` `!طرد` `!حظر` `!say` `!dm` `!مسح`**";
+    if (interaction.customId === 'h_police') list = "**`!تفتيش` `!كلبش` `!بصمة` `!سلاح` `!مخالفة` `!حجز` `!مطاردة`**";
+    if (interaction.customId === 'h_gang') list = "**`!تهريب` `!غسيل` `!سطو` `!خطف` `!فزعة` `!مخدرات`**";
+    if (interaction.customId === 'h_bank') list = "**`!بنك` `!مال` `!تحويل` `!ايداع` `!سحب` `!راتب` `!مزاد`**";
+    if (interaction.customId === 'h_life') list = "**`!هوية` `!حقيبة` `!وظيفة` `!بيت` `!سيارة` `!جوال` `!اكس`**";
+
+    await interaction.reply({ content: `🛠️ **أوامـر الـقـسـم الـمـخـتـارة:**\n${list}`, ephemeral: true });
 });
 
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-bot.login(DISCORD_TOKEN);
+bot.login(process.env.DISCORD_TOKEN);
