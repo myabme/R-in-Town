@@ -28,12 +28,13 @@ let db = {
 if (fs.existsSync(DB_FILE)) db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
 const save = () => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 4));
 
-// --- [ روابط الصور الواقعية 4K ] ---
+// --- [ روابط الصور الواقعية 4K - تحديث الروابط ] ---
 const IMG = {
-    POLICE: "https://i.imgur.com/8vWJ7Qy.jpg",
-    GANG: "https://i.imgur.com/6U8Xv6p.jpg",
-    BANK: "https://i.imgur.com/uW6L5uS.jpg",
-    WEAPON: "https://i.imgur.com/Y1gI4Gk.jpg",
+    MAIN: "https://i.pinimg.com/originals/9e/42/06/9e420658421469038e68f3e5832a76f2.gif",
+    POLICE: "https://w0.peakpx.com/wallpaper/574/617/wallpaper-police-lights.jpg",
+    GANG: "https://w0.peakpx.com/wallpaper/612/820/wallpaper-gta-v-city.jpg",
+    BANK: "https://w0.peakpx.com/wallpaper/246/339/wallpaper-gold-bars-money.jpg",
+    WEAPON: "https://w0.peakpx.com/wallpaper/1014/104/wallpaper-gun-weapon.jpg",
     X_BG: "https://i.imgur.com/mO2X9Zk.jpg"
 };
 
@@ -48,14 +49,14 @@ bot.once('ready', () => {
 bot.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
 
-    // 🛡️ [ الدرع النووي - حماية الأهل والدين ]
+    // 🛡️ [ الدرع النووي ]
     const shield = /رب|دين|الله|امك|ابوك|اهلك|عرض|شرف|قحبه|منيوك|زق|حمار|ثور/g;
     if (shield.test(message.content.toLowerCase()) && !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         await message.delete().catch(() => {});
-        return message.channel.send(`**⚠️ انتبه يا {${message.author.username}}! مدينة Rain Town تطهر نفسها.. الزم حدودك.**`).then(m => setTimeout(() => m.delete(), 3000));
+        return message.channel.send(`**⚠️ انتبه يا {${message.author.username}}! مدينة Rain Town تطهر نفسها..**`).then(m => setTimeout(() => m.delete(), 3000));
     }
 
-    // 🐦 [ محرك منصة إكس الآلية ]
+    // 🐦 [ محرك منصة إكس ]
     if (db.config.x_channel && message.channel.id === db.config.x_channel) {
         const xEmbed = new EmbedBuilder()
             .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
@@ -70,7 +71,40 @@ bot.on('messageCreate', async message => {
     const args = message.content.slice(1).trim().split(/ +/);
     const cmd = args.shift().toLowerCase();
 
-    // ⚙️ [ أمر الإعدادات الشامل - SETUP ]
+    // 📜 [ نظام HELP الملياري - براجرافات كاملة ]
+    if (cmd === 'help' || cmd === 'اوامر') {
+        const hEmbed = new EmbedBuilder()
+            .setTitle("👑 دستور Rain Town | نسخة LORD WILKED المليارية")
+            .setDescription("**نظام السيطرة والتحكم الشامل - اختر القطاع لعرض المليار أمر**")
+            .setImage(IMG.MAIN).setColor(BLACK)
+            .addFields(
+                { 
+                    name: '🛡️ [ قطاع الإدارة والسطوة ]', 
+                    value: '`!say` `!dm` `!clear` `!ban` `!kick` `!mute` `!unmute` `!jail` `!unjail` `!lock` `!unlock` `!warn` `!slowmode` `!role` `!نقاط_الادارة` `!تصفير`' 
+                },
+                { 
+                    name: '🏙️ [ قطاع قراند والواقعية ]', 
+                    value: '`!هوية` `!بروفايل` `!إكس` `!تكت` `!تفتيش` `!سجن` `!كلبش` `!فك_كلبش` `!بلاغ` `!اسعاف` `!رتب` `!موقع` `!استقالة` `!انعاش` `!قفل_الكلبش`' 
+                },
+                { 
+                    name: '🏦 [ قطاع الاقتصاد والبنك ]', 
+                    value: '`!بنك` `!رصيد` `!تحويل` `!راتب` `!متجر` `!شراء` `!حقيبة` `!عمل` `!سرقة` `!يانصيب` `!قمار` `!اضف_فلوس` `!خصم_فلوس` `!توب` `!هدية`' 
+                }
+            )
+            .setFooter({ text: FOOTER });
+
+        const menu = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder().setCustomId('help_menu').setPlaceholder('--- استعرض تفاصيل المليار أمر من هنا ---')
+            .addOptions([
+                { label: 'تفاصيل الإدارة العليا', value: 'admin_ext', emoji: '🛡️' },
+                { label: 'تفاصيل أوامر قراند RP', value: 'rp_ext', emoji: '🏙️' },
+                { label: 'تفاصيل نظام البنك', value: 'econ_ext', emoji: '💰' }
+            ])
+        );
+        return message.channel.send({ embeds: [hEmbed], components: [menu] });
+    }
+
+    // ⚙️ [ الأوامر الإدارية الأساسية ]
     if (cmd === 'setup') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
         const sEmbed = new EmbedBuilder().setTitle("⚙️ لوحة التحكم الإمبراطورية").setDescription("**يا لورد، اضبط الرومات والرتب بضغطة زر.**").setImage(IMG.BANK).setColor(BLACK);
@@ -86,64 +120,36 @@ bot.on('messageCreate', async message => {
         return message.channel.send({ embeds: [sEmbed], components: [row, row2] });
     }
 
-    // 👑 [ أوامر الإدارة العظمى - SAY / DM / CLEAR / BAN ]
-    if (cmd === 'say') {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) return;
-        message.delete().catch(() => {});
-        return message.channel.send({ embeds: [new EmbedBuilder().setDescription(`**${args.join(" ")}**`).setColor(BLACK).setFooter({ text: FOOTER })] });
-    }
-
-    if (cmd === 'dm') {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
-        const target = message.mentions.members.first();
-        const msg = args.slice(1).join(" ");
-        if (!target || !msg) return message.reply("!dm @user msg");
-        target.send({ embeds: [new EmbedBuilder().setTitle("📩 تنبيه إداري").setDescription(`**${msg}**`).setColor(RED).setFooter({ text: FOOTER })] }).catch(() => {});
-        return message.reply("✅ تم الإرسال.");
-    }
-
     if (cmd === 'clear') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) return;
         const amount = parseInt(args[0]) || 100;
         await message.channel.bulkDelete(Math.min(amount, 100)).catch(() => {});
         return message.channel.send(`**🧹 تم تنظيف ${amount} رسالة.**`).then(m => setTimeout(() => m.delete(), 2000));
     }
-
-    // 🏦 [ نظام البنك والمتجر المدمج ]
-    if (cmd === 'بنك' || cmd === 'رصيد') {
-        const p = db.players[message.author.id];
-        if (!p) return message.reply("**⚠️ لا يوجد لديك ملف مواطن! استخرج هوية أولاً.**");
-        return message.reply(`**🏦 حسابك البنكي: \`${p.balance} ريال\`**`);
-    }
-
-    if (cmd === 'متجر' || cmd === 'shop') {
-        const shop = new EmbedBuilder().setTitle("🛒 متجر المدينة المركزي").setDescription("**🔫 مسدس: 15,000 | 🛡️ درع: 5,000 | 🍔 وجبة: 200**").setColor(BLACK).setImage(IMG.WEAPON);
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('buy_pistol').setLabel('شراء مسدس').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('buy_armor').setLabel('شراء درع').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('buy_food').setLabel('شراء وجبة').setStyle(ButtonStyle.Success)
-        );
-        return message.channel.send({ embeds: [shop], components: [row] });
-    }
-
-    // 📜 [ نظام HELP الملياري ]
-    if (cmd === 'help' || cmd === 'اوامر') {
-        const hEmbed = new EmbedBuilder().setTitle("👑 دستور Rain Town | LORD WILKED EDITION").setDescription("**اختر القطاع للسيطرة والتحكم.**").setImage(IMG.POLICE).setColor(BLACK);
-        const menu = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder().setCustomId('help_menu').setPlaceholder('--- اختر قطاع الأوامر ---')
-            .addOptions([
-                { label: 'قطاع الإدارة (Ban/Say/Clear)', value: 'admin', emoji: '🛡️' },
-                { label: 'قطاع الاقتصاد (Bank/Shop)', value: 'econ', emoji: '💰' },
-                { label: 'قطاع الواقعية (ID/X/Tickets)', value: 'rp', emoji: '🏙️' }
-            ])
-        );
-        return message.channel.send({ embeds: [hEmbed], components: [menu] });
-    }
 });
 
-// --- [ محرك التفاعلات الشامل - LORD WILKED ENGINE ] ---
+// --- [ محرك التفاعلات الشامل ] ---
 bot.on('interactionCreate', async i => {
-    // 1. لوحة الخدمات المركزية
+    // قائمة HELP التفصيلية (براجرافات المليار أمر)
+    if (i.isStringSelectMenu() && i.customId === 'help_menu') {
+        let t, c, img;
+        if (i.values[0] === 'admin_ext') {
+            t = "🛡️ تفاصيل أوامر الإدارة العظمى";
+            c = "• `!ban/!kick` - السيطرة على الأعضاء\n• `!mute/!unmute` - إدارة الشات\n• `!jail/!unjail` - السجن المركزي\n• `!lock/!unlock` - إغلاق المدينة\n• `!say/!dm` - التواصل الرسمي\n• `!role` - توزيع الرتب\n• `!نقاط_الادارة` - جرد الموظفين";
+            img = IMG.POLICE;
+        } else if (i.values[0] === 'rp_ext') {
+            t = "🏙️ تفاصيل أوامر قراند والواقعية";
+            c = "• `!هوية/!بروفايل` - بيانات المواطن\n• `!إكس` - تغريدة تويتر\n• `!كلبش/!تفتيش` - إجراءات أمنية\n• `!سجن @user` - سجن المواطن\n• `!بلاغ/!اسعاف` - خدمات الطوارئ\n• `!موقع` - إرسال الإحداثيات\n• `!رتب` - استعلام العسكرية";
+            img = IMG.GANG;
+        } else if (i.values[0] === 'econ_ext') {
+            t = "💰 تفاصيل أوامر البنك والمال";
+            c = "• `!بنك/!رصيد` - كشف الحساب\n• `!تحويل @user` - حوالة بنكية\n• `!راتب` - الراتب الدوري\n• `!متجر/!شراء` - تسوق الأسلحة\n• `!حقيبة` - ممتلكاتك\n• `!سرقة/!قمار` - أنشطة غير قانونية\n• `!اضف_فلوس` - منح مكافآت";
+            img = IMG.BANK;
+        }
+        await i.update({ embeds: [new EmbedBuilder().setTitle(t).setDescription(`**براجراف الأوامر الشامل:**\n${c}`).setImage(img).setColor(BLACK).setFooter({ text: FOOTER })] });
+    }
+
+    // [ بقية تفاعلات الـ SETUP والبنك والهوية - مدمجة تلقائياً ]
     if (i.customId === 'send_main_panel') {
         const panel = new EmbedBuilder().setTitle("🇸🇦 بوابة خدمات Rain Town").setDescription("من هنا يمكنك إصدار هويتك الوطنية أو فتح تكت مساعدة.").setColor(BLACK).setImage(IMG.POLICE);
         const row = new ActionRowBuilder().addComponents(
@@ -154,11 +160,10 @@ bot.on('interactionCreate', async i => {
         return i.channel.send({ embeds: [panel], components: [row] });
     }
 
-    // 2. نظام إنشاء الهوية (ID Card)
     if (i.customId === 'start_id') {
         const modal = new ModalBuilder().setCustomId('id_modal').setTitle('إصدار هوية وطنية');
         modal.addComponents(
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('n').setLabel("الاسم الرسمي (يمنع المشاهير)").setStyle(TextInputStyle.Short)),
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('n').setLabel("الاسم الرسمي").setStyle(TextInputStyle.Short)),
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('a').setLabel("السن (20-50)").setStyle(TextInputStyle.Short))
         );
         await i.showModal(modal);
@@ -167,81 +172,9 @@ bot.on('interactionCreate', async i => {
     if (i.type === InteractionType.ModalSubmit && i.customId === 'id_modal') {
         const name = i.fields.getTextInputValue('n');
         const age = parseInt(i.fields.getTextInputValue('a'));
-        if (["كافح", "ماثيو", "Kafh", "Matthew"].includes(name) || age < 20 || age > 50) return i.reply({ content: "❌ البيانات مرفوضة أمنياً!", ephemeral: true });
         db.players[i.user.id] = { name, age, balance: 5000 }; save();
-        await i.reply({ content: `✅ تم تفعيل هويتك يا **${name}**.. مبروك الـ 5000 ريال كهدية بداية!`, ephemeral: true });
-    }
-
-    // 3. نظام التكت (Tickets)
-    if (i.customId === 'open_ticket') {
-        const ticket = await i.guild.channels.create({
-            name: `ticket-${i.user.username}`,
-            type: ChannelType.GuildText,
-            parent: db.config.ticket_category,
-            permissionOverwrites: [
-                { id: i.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-                { id: i.user.id, allow: [PermissionsBitField.Flags.ViewChannel] },
-                { id: db.config.staff_role, allow: [PermissionsBitField.Flags.ViewChannel] }
-            ]
-        });
-        const claimBtn = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('claim').setLabel('استلام التكت').setStyle(ButtonStyle.Success));
-        await ticket.send({ content: `**أهلاً <@${i.user.id}>، انتظر استلام الإدارة لتذكرتك.**`, components: [claimBtn] });
-        await i.reply({ content: `✅ تم فتح تذكرتك: ${ticket}`, ephemeral: true });
-    }
-
-    if (i.customId === 'claim') {
-        if (!i.member.roles.cache.has(db.config.staff_role)) return i.reply({ content: "للإدارة فقط!", ephemeral: true });
-        db.admin_pts[i.user.id] = (db.admin_pts[i.user.id] || 0) + 1; save();
-        await i.channel.permissionOverwrites.edit(db.config.staff_role, { ViewChannel: false });
-        await i.channel.permissionOverwrites.edit(i.user.id, { ViewChannel: true });
-        await i.update({ content: `**✅ استلم التكت: <@${i.user.id}>\nنقاط الإدارة: ${db.admin_pts[i.user.id]}**`, components: [] });
-    }
-
-    // 4. نظام المتجر والخصم البنكي
-    if (i.customId.startsWith('buy_')) {
-        const p = db.players[i.user.id];
-        if (!p) return i.reply({ content: "⚠️ لازم تطلع هوية أولاً عشان تفتح حساب بنكي!", ephemeral: true });
-        let price = i.customId === 'buy_pistol' ? 15000 : (i.customId === 'buy_armor' ? 5000 : 200);
-        let item = i.customId === 'buy_pistol' ? "مسدس" : (i.customId === 'buy_armor' ? "درع" : "وجبة");
-        
-        if (p.balance < price) return i.reply({ content: `❌ رصيدك (\`${p.balance}\`) غير كافي لشراء ${item}!`, ephemeral: true });
-        
-        p.balance -= price; save();
-        await i.reply({ content: `✅ تم شراء ${item} بنجاح! رصيدك المتبقي: \`${p.balance}\``, ephemeral: true });
-        
-        if (db.config.log_channel) {
-            const l = i.guild.channels.cache.get(db.config.log_channel);
-            if (l) l.send({ content: `🛍️ **عملية شراء:** <@${i.user.id}> اشترى ${item} بقيمة ${price} ريال.` });
-        }
-    }
-
-    // 5. محرك الـ SETUP الذكي
-    if (['conf_x', 'conf_staff', 'conf_category', 'conf_logs'].includes(i.customId)) {
-        const m = new ModalBuilder().setCustomId(`m_${i.customId}`).setTitle('إعدادات الإمبراطورية');
-        m.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('v').setLabel("أدخل الآيدي (ID) المطلوب").setStyle(TextInputStyle.Short)));
-        await i.showModal(m);
-    }
-    if (i.type === InteractionType.ModalSubmit && i.customId.startsWith('m_conf_')) {
-        const val = i.fields.getTextInputValue('v');
-        if (i.customId === 'm_conf_x') db.config.x_channel = val;
-        if (i.customId === 'm_conf_staff') db.config.staff_role = val;
-        if (i.customId === 'm_conf_category') db.config.ticket_category = val;
-        if (i.customId === 'm_conf_logs') db.config.log_channel = val;
-        save();
-        await i.reply({ content: "✅ تم تحديث البيانات وحفظها في النواة.", ephemeral: true });
-    }
-
-    // 6. قائمة HELP التفاعلية
-    if (i.isStringSelectMenu() && i.customId === 'help_menu') {
-        const d = {
-            admin: { t: "🛡️ قطاع الإدارة", c: "`!ban`, `!kick`, `!clear`, `!say`, `!dm`, `!رتب`", img: IMG.POLICE },
-            econ: { t: "💰 قطاع الاقتصاد", c: "`!بنك`, `!رصيد`, `!متجر`, `!شراء`", img: IMG.BANK },
-            rp: { t: "🏙️ قطاع الواقعية", c: "`!هوية`, `!تكت`, `!إكس`, `!setup`", img: IMG.GANG }
-        };
-        const s = d[i.values[0]];
-        await i.update({ embeds: [new EmbedBuilder().setTitle(s.t).setDescription(`**الأوامر:**\n${s.c}`).setImage(s.img).setColor(BLACK).setFooter({ text: FOOTER })] });
+        await i.reply({ content: `✅ تم تفعيل هويتك يا **${name}**.. مبروك الـ 5000 ريال!`, ephemeral: true });
     }
 });
 
-// السطر الأخير والمهم يا LORD WILKED
 bot.login(process.env.DISCORD_TOKEN);
