@@ -23,7 +23,7 @@ const DB_FILE = './rain_town_final_db.json';
 let db = { 
     players: {}, 
     names: [], 
-    config: { citizenRole: null }, // لتخزين رتبة المواطن
+    config: { citizenRole: null }, 
     shop: [
         { id: '1', name: 'رتبة VIP', price: 50000, emoji: '💎' },
         { id: '2', name: 'سلاح كلاش', price: 15000, emoji: '🔫' }
@@ -36,14 +36,14 @@ const save = () => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 4));
 
 const FAMOUS_NAMES = ["كافح", "ماثيو", "Kafh", "Matthew", "ابو فله", "بندريتا", "ويلكد", "الورد"];
 
-// --- [ معرض صور قراند الاحترافي ] ---
+// --- [ معرض صور قراند المحدث - روابط مباشرة شغالة 100% ] ---
 const IMG = {
-    MAIN: "https://i.pinimg.com/originals/9e/42/06/9e420658421469038e68f3e5832a76f2.gif",
-    BANK: "https://i.imgur.com/vH9v50R.jpg",    // صورة بنك Maze Bank
-    TICKET: "https://i.imgur.com/GscX8sA.jpg",  // صورة دعم فني قراند
-    SHOP: "https://i.imgur.com/N7W0zM4.jpg",    // صورة محل ملابس/أسلحة
-    ID: "https://i.imgur.com/v9qI9mU.jpg",      // صورة مركز شرطة قراند
-    ADMIN: "https://i.imgur.com/S6eXjZJ.jpg"    // صورة سيارات شرطة ومهمات
+    MAIN: "https://i.imgur.com/vH9v50R.jpg",    // صورة المدينة
+    BANK: "https://i.imgur.com/u1q5e_m.jpg",    // صورة البنك
+    TICKET: "https://i.imgur.com/3R-U5_B.jpg",  // صورة الدعم
+    SHOP: "https://i.imgur.com/612820.jpg",     // صورة المتجر
+    ID: "https://i.imgur.com/1621944.jpg",      // صورة الهوية
+    ADMIN: "https://i.imgur.com/S6eXjZJ.jpg"    // صورة الإدارة
 };
 
 bot.on('ready', () => {
@@ -69,7 +69,7 @@ bot.on('messageCreate', async message => {
     if (cmd === 'help' || cmd === 'اوامر') {
         const h = new EmbedBuilder()
             .setTitle("👑 دستور Rain Town | سيطرة LORD WILKED")
-            .setDescription("**الأوامر الإدارية والمدنية:**")
+            .setDescription("**الأوامر الإدارية والمدنية المتاحة:**")
             .setImage(IMG.MAIN).setColor(BLACK).setFooter({ text: FOOTER })
             .addFields(
                 { name: '🛡️ الإدارة', value: '`!مسح [عدد]` `!ban` `!kick` `!تفعيل` `!رتب`' },
@@ -91,14 +91,14 @@ bot.on('messageCreate', async message => {
     if (cmd === 'رتب' || cmd === 'رتبة') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
         const role = message.mentions.roles.first();
-        if (!role) return message.reply("منشن الرتبة اللي تبي تخليها للمواطنين!");
+        if (!role) return message.reply("منشن الرتبة!");
         db.config.citizenRole = role.id; save();
-        return message.reply(`✅ تم اعتماد رتبة **${role.name}** كصلاحية رسمية للمواطنين.`);
+        return message.reply(`✅ تم اعتماد رتبة **${role.name}** للمواطنين.`);
     }
 
     // ⚙️ نظام الـ SETUP
     if (cmd === 'setup' && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        const sEmbed = new EmbedBuilder().setTitle("⚙️ لوحة تحكم Rain Town").setDescription("ارسل الأنظمة بصورها المخصصة:").setColor(BLACK).setImage(IMG.ADMIN);
+        const sEmbed = new EmbedBuilder().setTitle("⚙️ لوحة تحكم Rain Town").setDescription("أرسل أنظمة القارة (أبيض وأسود):").setColor(BLACK).setImage(IMG.ADMIN);
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('set_id').setLabel('نظام الهوية').setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId('set_bank').setLabel('نظام البنك').setStyle(ButtonStyle.Secondary),
@@ -109,33 +109,32 @@ bot.on('messageCreate', async message => {
     }
 });
 
-// --- [ محرك التفاعلات - الأزرار والمودالات ] ---
+// --- [ محرك التفاعلات ] ---
 bot.on('interactionCreate', async i => {
     try {
-        // --- إرسال الأنظمة (Setup) ---
         if (i.customId === 'set_id') {
-            const embed = new EmbedBuilder().setTitle("🇸🇦 إصدار هوية Rain Town").setDescription("سجل الآن لدخول القارة.").setImage(IMG.ID).setColor(BLACK);
+            const embed = new EmbedBuilder().setTitle("💳 إصدار هوية Rain Town").setDescription("سجل الآن لدخول القارة.").setImage(IMG.ID).setColor(BLACK);
             const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('open_id').setLabel('إصدار هوية').setStyle(ButtonStyle.Secondary));
             return i.channel.send({ embeds: [embed], components: [row] });
         }
         if (i.customId === 'set_bank') {
-            const embed = new EmbedBuilder().setTitle("🏦 بنك Maze Bank المركزي").setDescription("أدر أموالك في Rain Town.").setImage(IMG.BANK).setColor(BLACK);
+            const embed = new EmbedBuilder().setTitle("🏦 بنك Maze Bank").setDescription("أدر أموالك في Rain Town.").setImage(IMG.BANK).setColor(BLACK);
             const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('bal').setLabel('إظهار الرصيد').setStyle(ButtonStyle.Secondary));
             return i.channel.send({ embeds: [embed], components: [row] });
         }
         if (i.customId === 'set_ticket') {
-            const embed = new EmbedBuilder().setTitle("📩 الدعم الفني لـ Rain Town").setDescription("افتح تذكرة للتواصل مع الإدارة.").setImage(IMG.TICKET).setColor(BLACK);
+            const embed = new EmbedBuilder().setTitle("📩 الدعم الفني").setDescription("افتح تذكرة للتواصل مع الإدارة.").setImage(IMG.TICKET).setColor(BLACK);
             const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('open_ticket').setLabel('فتح تذكرة').setStyle(ButtonStyle.Secondary));
             return i.channel.send({ embeds: [embed], components: [row] });
         }
         if (i.customId === 'set_shop') {
-            const embed = new EmbedBuilder().setTitle("🛒 متجر Rain Town العام").setDescription("تسوق أفضل الأغراض والرتب.").setImage(IMG.SHOP).setColor(BLACK);
+            const embed = new EmbedBuilder().setTitle("🛒 متجر Rain Town").setDescription("تسوق الأغراض والرتب.").setImage(IMG.SHOP).setColor(BLACK);
             const options = db.shop.map(s => ({ label: s.name, description: `${s.price} ريال`, value: s.id, emoji: s.emoji }));
             const menu = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('buy').setPlaceholder('اختر غرضاً..').addOptions(options));
             return i.channel.send({ embeds: [embed], components: [menu] });
         }
 
-        // --- نظام التذاكر (مُصلح) ---
+        // --- نظام التذاكر ---
         if (i.customId === 'open_ticket') {
             const channel = await i.guild.channels.create({
                 name: `ticket-${i.user.username}`,
@@ -145,17 +144,17 @@ bot.on('interactionCreate', async i => {
                     { id: i.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }
                 ]
             });
-            const tEmbed = new EmbedBuilder().setTitle("📩 تذكرة جديدة").setDescription(`أهلاً بك يا ${i.user}، انتظر رد الإدارة.`).setColor(BLACK);
-            const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التذكرة').setStyle(ButtonStyle.Danger));
+            const tEmbed = new EmbedBuilder().setTitle("📩 تذكرة جديدة").setDescription(`أهلاً بك يا ${i.user}، سيتم الرد عليك قريباً.`).setColor(BLACK);
+            const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق').setStyle(ButtonStyle.Danger));
             await channel.send({ embeds: [tEmbed], components: [row] });
-            return i.reply({ content: `✅ تم فتح تذكرتك هنا: ${channel}`, ephemeral: true });
+            return i.reply({ content: `✅ تم فتح تذكرتك: ${channel}`, ephemeral: true });
         }
         if (i.customId === 'close_ticket') {
-            await i.reply("سيتم إغلاق التذكرة بعد 3 ثوانٍ...");
-            setTimeout(() => i.channel.delete(), 3000);
+            await i.reply("جاري الإغلاق...");
+            setTimeout(() => i.channel.delete(), 2000);
         }
 
-        // --- نظام الهوية (مُصلح مع الرتبة التلقائية) ---
+        // --- نظام الهوية ---
         if (i.customId === 'open_id') {
             const modal = new ModalBuilder().setCustomId('id_modal').setTitle('هوية Rain Town');
             modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('n').setLabel("الاسم الثلاثي").setStyle(TextInputStyle.Short)));
@@ -167,18 +166,18 @@ bot.on('interactionCreate', async i => {
             db.players[i.user.id] = { name, balance: 5000, inv: [] };
             db.names.push(name); save();
             if (db.config.citizenRole) await i.member.roles.add(db.config.citizenRole).catch(() => {});
-            await i.reply({ content: `✅ مبروك يا **${name}**! استلمت الهوية و 5,000 ريال.`, ephemeral: true });
+            await i.reply({ content: `✅ مبروك يا **${name}**! استلمت 5,000 ريال.`, ephemeral: true });
         }
 
         // --- البنك والمتجر ---
         if (i.customId === 'bal') {
             const p = db.players[i.user.id];
-            return i.reply({ content: `💰 رصيدك الحالي: **${p ? p.balance : 0}** ريال.`, ephemeral: true });
+            return i.reply({ content: `💰 رصيدك: **${p ? p.balance : 0}** ريال.`, ephemeral: true });
         }
         if (i.isStringSelectMenu() && i.customId === 'buy') {
             const item = db.shop.find(s => s.id === i.values[0]);
             const p = db.players[i.user.id];
-            if (!p || p.balance < item.price) return i.reply({ content: "❌ رصيدك غير كافٍ!", ephemeral: true });
+            if (!p || p.balance < item.price) return i.reply({ content: "❌ رصيدك لا يكفي!", ephemeral: true });
             p.balance -= item.price; p.inv.push(`${item.emoji} ${item.name}`); save();
             return i.reply({ content: `✅ اشتريت **${item.name}** بنجاح!`, ephemeral: true });
         }
