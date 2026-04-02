@@ -1,22 +1,34 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ActivityType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ActivityType, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers]
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent, 
+        GatewayIntentBits.GuildMembers
+    ]
 });
 
 const prefix = "!";
 const devSignature = "Developed by Wilked (Rain Town) 🌧️";
 
-// تحميل قاعدة البيانات (تخزين الأوامر المعدلة والجديدة)
+// تحميل قاعدة البيانات بأمان
 let db = { users: {}, perms: {}, customCommands: {}, cmdAliases: {} };
-if (fs.existsSync('./database.json')) {
-    db = JSON.parse(fs.readFileSync('./database.json', 'utf8'));
+try {
+    if (fs.existsSync('./database.json')) {
+        const data = fs.readFileSync('./database.json', 'utf8');
+        db = JSON.parse(data);
+    }
+} catch (e) { console.log("Database initialized."); }
+
+function saveDB() {
+    fs.writeFileSync('./database.json', JSON.stringify(db, null, 4));
 }
-function saveDB() { fs.writeFileSync('./database.json', JSON.stringify(db, null, 4)); }
 
 client.on('ready', () => {
-    console.log(`Rain Town Command Manager | ${devSignature}`);
+    console.log(`Rain Town is Back! | ${devSignature}`);
+    client.user.setActivity(`Rain Town RP | !help`, { type: ActivityType.Watching });
 });
 
 client.on('messageCreate', async message => {
@@ -25,69 +37,94 @@ client.on('messageCreate', async message => {
     const args = message.content.slice(prefix.length).trim().split(/ +/);
     const rawCommand = args.shift().toLowerCase();
 
-    // فحص إذا كان الأمر له "اسم مستعار" (Alias) تم تعديله من الديسكورد
-    const command = db.cmdAliases[rawCommand] || rawCommand;
+    // فحص الأسماء المستعارة (Aliases)
+    const command = db.cmdAliases && db.cmdAliases[rawCommand] ? db.cmdAliases[rawCommand] : rawCommand;
 
-    // --- [ نظام تعديل الأوامر من الديسكورد - للأدمن فقط ] ---
-    if (command === 'تعديل_امر') {
-        if (!message.member.permissions.has('Administrator')) return;
+    // --- [ 1. نظام تعديل الأوامر ] ---
+    if (command === 'تعديل') {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
+        const type = args[0]; // (اسم أو اضافة)
         
-        const type = args[0]; // (alias أو add)
         if (type === 'اسم') {
-            // مثال: !تعديل_امر اسم [الاسم_القديم] [الاسم_الجديد]
             const oldName = args[1];
             const newName = args[2];
-            if (!oldName || !newName) return message.reply("⚠️ الاستخدام: `!تعديل_امر اسم [القديم] [الجديد]`");
-            
+            if (!oldName || !newName) return message.reply("⚠️ !تعديل اسم [القديم] [الجديد]");
+            if (!db.cmdAliases) db.cmdAliases = {};
             db.cmdAliases[newName] = oldName;
             saveDB();
-            message.reply(`✅ تم تغيير اسم الأمر من **${oldName}** إلى **${newName}** بنجاح!`);
-        } 
-        else if (type === 'اضافة') {
-            // مثال: !تعديل_امر اضافة [الامر] [الرد]
+            return message.reply(`✅ تم تغيير اسم الأمر من **${oldName}** إلى **${newName}**.`);
+        }
+        if (type === 'اضافة') {
             const cmdName = args[1];
             const response = args.slice(2).join(" ");
-            if (!cmdName || !response) return message.reply("⚠️ الاستخدام: `!تعديل_امر اضافة [الامر] [الرد]`");
-            
+            if (!cmdName || !response) return message.reply("⚠️ !تعديل اضافة [الامر] [الرد]");
+            if (!db.customCommands) db.customCommands = {};
             db.customCommands[cmdName] = response;
             saveDB();
-            message.reply(`✅ تم إضافة أمر جديد باسم **${cmdName}** بنجاح!`);
+            return message.reply(`✅ تم إضافة أمر جديد: **${cmdName}**.`);
         }
     }
 
-    // --- [ تشغيل الأوامر المضافة (Custom Commands) ] ---
-    if (db.customCommands[command]) {
+    // تشغيل الأوامر المضافة
+    if (db.customCommands && db.customCommands[command]) {
         return message.reply(db.customCommands[command]);
     }
 
-    // --- [ الأوامر الأساسية (بعد فحص الاسم المستعار) ] ---
+    // --- [ 2. أوامر المساعدة (Help) ] ---
     if (command === 'help' || command === 'اوامر') {
         const helpEmbed = new EmbedBuilder()
-            .setTitle(`🏙️ لوحة تحكم أوامر ${devSignature}`)
-            .setDescription("اختر القسم لعرض الأوامر، أو استخدم `!تعديل_امر` لتغيير المسميات.")
+            .setTitle(`🌧️ مديـنة Rain Town - دليل المساعدة`)
+            .setDescription(`مرحباً بك، اختر القسم المطلوب من القائمة بالأسفل.\n\n**ملاحظة للأدمن:** لتغيير اسم أمر استخدم \`!تعديل اسم [القديم] [الجديد]\``)
             .setColor("#000000")
             .setFooter({ text: devSignature });
 
         const menu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
-                .setCustomId('help_menu')
+                .setCustomId('help_select')
                 .setPlaceholder('اختر القسم...')
                 .addOptions([
-                    { label: '🛒 المتجر', value: 'shop', emoji: '💰' },
-                    { label: '📝 المواطنة', value: 'verify', emoji: '🪪' },
-                    { label: '⚙️ الإعدادات', value: 'settings', emoji: '🛠️' }
+                    { label: '💰 المتجر والتصنيع', value: 'shop_p', emoji: '🛒' },
+                    { label: '🪪 الهوية والتفعيل', value: 'verify_p', emoji: '📝' },
+                    { label: '⚙️ أوامر السيرفر', value: 'server_p', emoji: '🏙️' }
                 ])
         );
-        message.reply({ embeds: [helpEmbed], components: [menu] });
+        return message.reply({ embeds: [helpEmbed], components: [menu] });
     }
 
-    // مثال لأمر التفعيل (بيشتغل بالاسم القديم أو الجديد اللي اخترته)
+    // --- [ 3. أمر التفعيل ] ---
     if (command === 'تفعيل') {
         const target = message.mentions.members.first();
         const nick = args.slice(1).join(" ");
         if (!target || !nick) return message.reply("⚠️ !تفعيل @الشخص الاسم");
-        await target.setNickname(`[RT] ${nick}`).catch(() => {});
-        message.reply(`✅ تم تفعيل المواطن بنجاح.`);
+        
+        try {
+            await target.setNickname(`[RT] ${nick}`);
+            message.reply(`✅ تم تفعيل المواطن **${nick}** بنجاح.`);
+        } catch (e) { message.reply("❌ البوت يحتاج رتبة أعلى لتغيير الأسماء."); }
+    }
+
+    // --- [ 4. أوامر الاقتصاد ] ---
+    if (command === 'فلوسي') {
+        const userId = message.author.id;
+        if (!db.users[userId]) db.users[userId] = { money: 5000 };
+        message.reply(`💵 رصيدك الحالي: **${db.users[userId].money}$**`);
+    }
+});
+
+// معالجة القائمة (Help Menu)
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isStringSelectMenu()) return;
+    if (interaction.customId === 'help_select') {
+        const embed = new EmbedBuilder().setColor("#000000").setFooter({ text: devSignature });
+        
+        if (interaction.values[0] === 'shop_p') {
+            embed.setTitle("🛒 أوامر المتجر").setDescription("`!متجر_اسلحة` | `!معرض_سيارات` | `!تجميع` | `!تصنع_سلاح`").setImage("https://i.ibb.co/pLgR9Dq/weapons-shop.jpg");
+        } else if (interaction.values[0] === 'verify_p') {
+            embed.setTitle("🪪 أوامر الهوية").setDescription("`!تفعيل @الشخص الاسم` | `!هوية` | `!حقيبتي`").setImage("https://i.ibb.co/KjqY0wN/id-card.png");
+        } else if (interaction.values[0] === 'server_p') {
+            embed.setTitle("🏙️ أوامر السيرفر").setDescription("`!فلوسي` | `!خاصيات` | `!تعديل اسم` | `!بلاغ`").setImage("https://i.ibb.co/L5hY5Mh/car-dealer.jpg");
+        }
+        await interaction.update({ embeds: [embed] });
     }
 });
 
