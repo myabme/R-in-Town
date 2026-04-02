@@ -1,88 +1,56 @@
+/**
+ * 👑 PROJECT: RAIN TOWN SINGULARITY (THE ATOMIC SCRIPT)
+ * 👨‍💻 DEVELOPER: WILKED (LORD YASSER)
+ * 🛡️ VERSION: 100.0.0 (ULTIMATE CONVERGENCE)
+ * 📜 LOGIC: GOVERNMENT + GANGS + SECURITY + AUTO-SYSTEMS
+ */
+
 const { 
     Client, GatewayIntentBits, ActivityType, EmbedBuilder, ActionRowBuilder, 
-    ButtonBuilder, ButtonStyle, PermissionsBitField, ChannelType, 
-    ModalBuilder, TextInputBuilder, TextInputStyle, InteractionType 
+    StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, 
+    ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle, InteractionType,
+    Collection 
 } = require('discord.js');
 const fs = require('fs');
 
-const bot = new Client({ 
-    intents: [3276799], // تفعيل كافة الصلاحيات للسيطرة الكاملة
-    allowedMentions: { parse: ['users', 'roles'], repliedUser: true }
-});
+const bot = new Client({ intents: [3276799] });
 
 const BLACK = 0x000000;
-const FOOTER = "developed by wilked | Rain Town Immortal Security";
-const DB_FILE = './rain_town_mega_data.json';
+const GOLD = 0xD4AF37;
+const FOOTER = "Developed by Wilked | Rain Town Overlord V100";
+const DB_FILE = './wilked_singularity_db.json';
 
-// --- [ مصفوفات الأوامر الأخطبوطية - تغطية شاملة لـ 10,000+ سيناريو ] ---
-const CMDS = {
-    ADMIN: ["رتب", "نقطة", "سحب_رتبة", "تحذير", "تصفير", "سجن", "طرد", "حظر", "مسح", "قفل", "فتح", "ايمبد", "تثبيت", "صلاحية", "اعلان", "تكت", "ارشيف", "تفعيل", "تعطيل", "مراقبة", "سجل_اداري", "برودكاست", "اصلاح", "نسخ_احتياطي", "تغيير_بريفكس", "احصائيات", "كشف_سبام", "اعادة_تشغيل", "تصفير_كامل", "تحكم_كامل"],
-    POLICE: ["تفتيش", "كلبش", "بصمة", "رخصة", "مخالفة", "حجز", "مطاردة", "تحقيق", "سلاح", "بلاغ", "دورية", "مداهمة", "توقيف", "حرز", "فحص_سكر", "قناص", "وحدة_الكلاب", "نجمة", "بصمة_عين", "تفتيش_ذاتي", "مذكرة_اعتقال", "حجز_مركبة", "سجن_مركز", "قوات_خاصة", "مداهمة_وكر", "تفتيش_منزل", "مصادرة", "تقرير_امني"],
-    EMS: ["علاج", "انعاش", "فحص_دم", "عملية", "تخدير", "جبيرة", "نقالة", "طوارئ", "اسعاف_جوي", "تقرير_طبي", "لقاح", "اشعة", "مصل", "عناية_مركزة", "نبض", "تضميد", "بنج", "غسيل_معدة", "نقل_دم", "تخطيط_قلب", "فحص_نفسي", "شهادة_وفاة", "بتر", "خياطة_جرح", "تطهير", "كمامة_اوكسجين"],
-    GANGS: ["تهريب", "غسيل", "سطو", "خطف", "تصفية", "فزعة", "سوق_سوداء", "مخدرات", "اتفاق", "سرقة", "تخريب", "تجمع", "توزيع", "غدر", "اسلحة_ممسوحة", "فدية", "اغتيال", "احتلال_منطقة", "تزييف_عملة", "شحنة_ممنوعة", "قمار", "حماية", "تفجير", "تشفير_مكالمات", "سطو_مسلح"],
-    MECHANIC: ["فحص_مركبة", "تصليح", "بوية", "تزويد", "تغيير_زيت", "ونش", "فحص_مكينة", "تغيير_كفرات", "تعديل_هيدروليك", "سمكرة", "تربيط", "تغيير_فلتر", "فحص_فرامل", "تلميع", "تغيير_جنوط", "تظليل", "اصلاح_راديتر", "وزن_اذرعة", "تعديل_مساعدات"],
-    CRAFT: ["تصنيع", "اصنع", "تفكيك", "صيانة", "مواد", "تطوير", "حديد", "نحاس", "بارود", "رصاص", "خشب", "تركيب", "تعديل", "درع", "منظار", "كاتم", "مخزن_اضافي", "طلاء_سلاح", "سبائك", "تجهيز_حربي", "منصة_تطوير", "قنبلة_يدوية", "مقبض_ليزر", "صناعة_رصاص"],
-    LIFE: ["هوية", "حقيبة", "وظيفة", "بيت", "سيارة", "كراج", "جوال", "اكس", "متجر", "وقود", "زواج", "طلاق", "تبني", "رخصة_قيادة", "تاكسي", "مطعم", "فندق", "نادي", "مطار", "جواز_سفر", "شراء_اراضي", "استئجار", "نادي_رياضي", "حلاقة", "تغيير_ملابس"]
-};
-
-// --- [ نظام الحماية الفولاذي (الدرع المتقدم) ] ---
-const usersMap = new Map();
-const LIMIT = 5; // عدد الرسائل القصوى
-const TIME = 5000; // خلال 5 ثواني
-const DIFF = 2000; // الفرق بين الرسائل
-
-let db = { 
-    players: {}, 
-    protection: { 
-        words: ["كلب", "زق", "حمار", "تفو", "ورع", "قحبه", "منيوك", "كس"],
-        links: true,
-        spam: true
-    } 
-};
-
+// --- [ قاعدة البيانات العظمى ] ---
+let db = { players: {}, config: { verified_role: "ID_رتبة_التفعيل", logs: null }, tickets: 0 };
 if (fs.existsSync(DB_FILE)) db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
 const save = () => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 4));
 
+// --- [ مصفوفات الحماية النووية ] ---
+const HOLY_SHIELD = [/رب/g, /دين/g, /الله/g, /امك/g, /ابوك/g, /اهلك/g, /عرض/g, /شرف/g];
+const BAD_WORDS = ["قحبه", "منيوك", "زق", "كلب", "تفو", "ورع", "خنيث", "قواد"];
+
+// --- [ مصفوفات الأوامر (المليار أمر) ] ---
+const COMMAND_MATRIX = {
+    GOVERNMENT: ["هوية", "جوازات", "داخلية", "خارجية", "صحة", "تعليم", "مرور", "سجل_مدني", "تجديد_اقامة", "بصمة", "منع_سفر"],
+    GANGS: ["تهريب", "غسيل_اموال", "مخدرات", "اغتيال", "خطف", "سطو_مسلح", "سوق_سوداء", "سلاح_ممسوح", "تشفير_جهاز", "فدية"],
+    ECONOMY: ["بنك", "راتب", "تحويل", "قرض", "إيكيا", "ميناء", "جمارك", "شراء_قصر", "استثمار", "تداول", "كشف_حساب"],
+    ADMIN: ["ban", "kick", "mute", "clear", "say", "dm", "رتب", "سجن", "طرد", "قفل", "فتح", "اعلان", "تثبيت", "تفعيل_يدوي"],
+    MILITARY: ["جيش", "استخبارات", "قوات_خاصة", "طيران_حربي", "غواصة", "نووي", "رادار", "تجنيد", "قناص", "مداهمة"]
+};
+
 bot.once('ready', () => {
-    bot.user.setPresence({ activities: [{ name: 'Rain Town Immortal Shield | v14', type: ActivityType.Streaming, url: 'https://twitch.tv/wilked' }] });
-    console.log("🔥 [إمبراطورية Rain Town محصنة وتعمل الآن - Developed by Wilked]");
+    bot.user.setPresence({ activities: [{ name: 'Rain Town Singularity | Wilked V100', type: ActivityType.Streaming, url: 'https://twitch.tv/wilked' }] });
+    console.log("🔥 [تم تفعيل القنبلة النووية - إمبراطورية Rain Town تحت السيطرة المطلقة]");
 });
 
 bot.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
 
-    // --- [ 1. درع الحماية من السب والروابط والسبام ] ---
+    // 🛡️ [ الدرع النووي: حماية الدين والأهل ]
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        // حماية السب
-        if (db.protection.words.some(w => message.content.includes(w))) {
+        if (HOLY_SHIELD.some(p => p.test(message.content)) || BAD_WORDS.some(w => message.content.includes(w))) {
             message.delete().catch(() => {});
-            return message.channel.send(`**⚠️ مدينة Rain Town لا تقبل الألفاظ البذيئة يا {${message.author.username}}!**`).then(m => setTimeout(() => m.delete(), 3000));
-        }
-
-        // حماية الروابط
-        if (db.protection.links && (message.content.includes("discord.gg") || message.content.includes("http"))) {
-            message.delete().catch(() => {});
-            return message.reply("**🚫 ممنوع نشر الروابط الخارجية في مدينتنا!**");
-        }
-
-        // حماية السبام (التكرار)
-        if (db.protection.spam) {
-            if (usersMap.has(message.author.id)) {
-                const userData = usersMap.get(message.author.id);
-                const difference = message.createdTimestamp - userData.lastMessage.createdTimestamp;
-                let msgCount = userData.msgCount;
-                if (difference < DIFF) {
-                    msgCount++;
-                    if (msgCount >= LIMIT) {
-                        message.member.timeout(60000, "Spamming Protected by Wilked");
-                        return message.channel.send(`**🔇 تم إسكات {${message.author.username}} لمدة دقيقة بسبب السبام التلقائي.**`);
-                    }
-                } else { msgCount = 1; }
-                usersMap.set(message.author.id, { msgCount, lastMessage: message });
-            } else {
-                usersMap.set(message.author.id, { msgCount: 1, lastMessage: message });
-                setTimeout(() => usersMap.delete(message.author.id), TIME);
-            }
+            return message.channel.send(`**⚠️ انتبه! مدينة Rain Town خط أحمر.. يمنع المساس بالثوابت يا {${message.author.username}}!**`);
         }
     }
 
@@ -90,78 +58,76 @@ bot.on('messageCreate', async message => {
     const args = message.content.slice(1).trim().split(/ +/);
     const cmd = args.shift().toLowerCase();
 
-    // تجهيز بروفايل اللاعب
-    if (!db.players[message.author.id]) {
-        db.players[message.author.id] = { name: "غير مسجل", money: 5000, bank: 10000, items: [], job: "عاطل" };
-        save();
-    }
-    const p = db.players[message.author.id];
-
-    // --- [ 2. نظام الـ SETUP العملاق ] ---
+    // 🏗️ [ نظام الـ Setup الشامل: تفعيل + وزارات + عصابات ]
     if (cmd === 'setup_all') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
-        
-        const idEmbed = new EmbedBuilder().setTitle("🆔 إصدار الهوية الوطنية").setDescription("**__سجل هويتك الرسمية لفتح كافة صلاحياتك في المدينة.__**").setColor(BLACK).setFooter({ text: FOOTER });
-        const bankEmbed = new EmbedBuilder().setTitle("🏦 بنك Rain Town المركزي").setDescription("**__إدارة مالية شاملة وسريعة لثروتك.__**").setColor(BLACK).setFooter({ text: FOOTER });
-        const craftEmbed = new EmbedBuilder().setTitle("🛠️ الورشة المركزية").setDescription("**__صناعة الأسلحة والمعدات الحربية المتقدمة.__**").setColor(BLACK).setFooter({ text: FOOTER });
 
-        await message.channel.send({ embeds: [idEmbed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('reg_id').setLabel('إصدار هوية').setStyle(ButtonStyle.Success))] });
-        await message.channel.send({ embeds: [bankEmbed], components: [new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('b_bal').setLabel('الرصيد').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('b_dep').setLabel('إيداع').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('b_wit').setLabel('سحب').setStyle(ButtonStyle.Danger)
-        )] });
-        await message.channel.send({ embeds: [craftEmbed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('craft_menu').setLabel('فتح الورشة').setStyle(ButtonStyle.Primary))] });
-        
-        const tkEmbed = new EmbedBuilder().setTitle("🎫 مركز التذاكر").setDescription("**__تواصل مباشر مع الإدارة لتقديم البلاغات.__**").setColor(BLACK).setFooter({ text: FOOTER });
-        await message.channel.send({ embeds: [tkEmbed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('open_tk').setLabel('فتح تذكرة').setStyle(ButtonStyle.Danger))] });
+        // إيمبد التفعيل
+        const verifyEmbed = new EmbedBuilder().setTitle("✅ مركز التفعيل الوطني").setDescription("**اضغط على الزر أدناه لإصدار هويتك وتفعيل عضويتك في الدولة.**").setColor(BLACK);
+        const verifyRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('start_verify').setLabel('تفعيل الآن').setStyle(ButtonStyle.Success));
+
+        // إيمبد الوزارات
+        const govEmbed = new EmbedBuilder().setTitle("🇸🇦 بوابة ناجز | الخدمات الحكومية").setDescription("**الوصول لجميع وزارات الدولة: الداخلية، الجوازات، والمالية.**").setColor(BLACK);
+        const govRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('gov_menu').setLabel('فتح البوابة').setStyle(ButtonStyle.Primary));
+
+        await message.channel.send({ embeds: [verifyEmbed], components: [verifyRow] });
+        await message.channel.send({ embeds: [govEmbed], components: [govRow] });
     }
 
-    // --- [ 3. أوامر الإدارة الشاملة (Say / DM) ] ---
+    // 📢 [ أوامر SAY & DM ]
     if (cmd === 'say') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) return;
         message.delete().catch(() => {});
-        return message.channel.send({ embeds: [new EmbedBuilder().setDescription(`**__${args.join(" ")}__**`).setColor(BLACK).setFooter({ text: FOOTER })] });
+        return message.channel.send({ embeds: [new EmbedBuilder().setDescription(`**${args.join(" ")}**`).setColor(BLACK).setFooter({ text: FOOTER })] });
     }
 
     if (cmd === 'dm') {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
-        const target = message.mentions.members.first() || message.mentions.roles.first();
-        const text = args.slice(1).join(" ");
-        if (!target || !text) return;
-        if (target.user) target.send(`**__[✉️] رسالة إدارية: ${text}__**`).catch(() => {});
-        else target.members.forEach(m => m.send(`**__[📢] تنبيه للرتبة: ${text}__**`).catch(() => {}));
-        return message.reply("✅ تم إرسال الرسائل الإدارية بنجاح.");
+        const target = message.mentions.members.first();
+        if (!target) return;
+        target.send(`**__[✉️] رسالة من إدارة Rain Town: ${args.slice(1).join(" ")}__**`).catch(() => message.reply("❌ خاص الشخص مغلق."));
+        return message.reply("✅ تم الإرسال.");
     }
 
-    // --- [ 4. محرك الرد على آلاف الأوامر ] ---
-    for (const [cat, list] of Object.entries(CMDS)) {
+    // 🎖️ [ أمر رتب ]
+    if (cmd === 'رتب') {
+        const roles = message.guild.roles.cache.sort((a, b) => b.position - a.position).map(r => `${r.name} - ${r.id}`).join('\n');
+        fs.writeFileSync('./roles.txt', roles);
+        await message.reply({ files: ['./roles.txt'] });
+        return fs.unlinkSync('./roles.txt');
+    }
+
+    // ❓ [ نظام الأسئلة التلقائي ]
+    if (cmd === 'سؤال') {
+        const questions = ["ما هو عاصمة الدولة؟", "من هو مؤسس Rain Town؟", "كم ميزانية الجيش؟"];
+        const q = questions[Math.floor(Math.random() * questions.length)];
+        return message.reply(`**❓ سؤال التنشيط: ${q}**`);
+    }
+
+    // 🎮 [ محرك المليار أمر للرد الذكي ]
+    for (const [cat, list] of Object.entries(COMMAND_MATRIX)) {
         if (list.includes(cmd)) {
-            return message.channel.send({ embeds: [new EmbedBuilder().setTitle(`💎 نظام {${cat}} المتكامل`).setDescription(`**__[✅] تنفيذ أمر: {${cmd}}\nالمواطن: {${p.name}}\nالحالة: جاهز للـ RP المطلق..__**`).setColor(BLACK).setFooter({ text: FOOTER })] });
+            return message.channel.send({ embeds: [new EmbedBuilder().setTitle(`💎 نظام {${cat}}`).setDescription(`**__[✅] تنفيذ أمر: {${cmd}}\nالمواطن: {${message.author.username}}\nالحالة: نظام Wilked يعمل..__**`).setColor(BLACK).setFooter({ text: FOOTER })] });
         }
     }
 });
 
-// --- [ 5. التفاعلات، الـ Modals، والـ Tickets ] ---
+// --- [ التفاعلات والـ Modals (التفعيل والوزارات) ] ---
 bot.on('interactionCreate', async i => {
-    if (i.customId === 'reg_id') {
-        const modal = new ModalBuilder().setCustomId('id_modal').setTitle('بيانات الهوية');
-        modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('n').setLabel("الاسم").setStyle(TextInputStyle.Short)));
+    if (i.customId === 'start_verify') {
+        const modal = new ModalBuilder().setCustomId('verify_modal').setTitle('نظام التفعيل الموحد');
+        modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('real_name').setLabel("الاسم الرباعي").setStyle(TextInputStyle.Short)));
         await i.showModal(modal);
     }
-    if (i.type === InteractionType.ModalSubmit && i.customId === 'id_modal') {
-        db.players[i.user.id].name = i.fields.getTextInputValue('n');
+
+    if (i.type === InteractionType.ModalSubmit && i.customId === 'verify_modal') {
+        const name = i.fields.getTextInputValue('real_name');
+        db.players[i.user.id] = { name: name, bank: 5000, cash: 0, job: "مواطن" };
         save();
-        await i.reply({ content: `✅ تم تسجيل هويتك يا لورد **${db.players[i.user.id].name}**!`, ephemeral: true });
-    }
-    if (i.customId === 'open_tk') {
-        const ch = await i.guild.channels.create({
-            name: `ticket-${i.user.username}`,
-            type: ChannelType.GuildText,
-            permissionOverwrites: [{ id: i.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, { id: i.user.id, allow: [PermissionsBitField.Flags.ViewChannel] }]
-        });
-        i.reply({ content: `✅ تذكرتك مفتوحة الآن: ${ch}`, ephemeral: true });
+        const role = i.guild.roles.cache.get(db.config.verified_role);
+        if (role) i.member.roles.add(role).catch(() => {});
+        await i.reply({ content: `✅ تم تفعيلك يا لورد **${name}** بنجاح!`, ephemeral: true });
     }
 });
 
-bot.login(process.env.DISCORD_TOKEN);
+bot.login("DISCORD_TOKEN");
